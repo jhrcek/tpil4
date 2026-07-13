@@ -1,0 +1,10 @@
+name = "tpil4"
+version = "0.1.0"
+defaultTargets = ["tpil4"]
+
+[[lean_lib]]
+name = "Tpil4"
+
+[[lean_exe]]
+name = "tpil4"
+root = "Main"
