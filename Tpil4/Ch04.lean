@@ -269,7 +269,7 @@ theorem gex2 (hg : g 0 0 = 0) : ∃ x, g x 0 = x := ⟨0, hg⟩
 theorem gex3 (hg : g 0 0 = 0) : ∃ x, g 0 0 = x := ⟨0, hg⟩
 theorem gex4 (hg : g 0 0 = 0) : ∃ x, g x x = 0 := ⟨0, hg⟩
 
-set_option pp.explicit true  -- display implicit arguments
+--set_option pp.explicit true  -- display implicit arguments
 
 #print gex1
 
@@ -315,3 +315,83 @@ example : (∃ x, p x ∧ q x) → ∃ x, q x ∧ p x :=
   fun ⟨w, hpw, hqw⟩ => ⟨w, hqw, hpw⟩
 
 -- TODO continue from "In the following example, we define IsEven"
+def IsEven (a : Nat) := ∃ b, a = 2 * b
+
+theorem even_plus_even (h1 : IsEven a) (h2 : IsEven b) :
+    IsEven (a + b) :=
+  Exists.elim h1 (fun w1 (hw1 : a = 2 * w1) =>
+  Exists.elim h2 (fun w2 (hw2 : b = 2 * w2) =>
+    Exists.intro (w1 + w2)
+      (calc a + b
+        _ = 2 * w1 + 2 * w2 := by rw [hw1, hw2]
+        _ = 2 * (w1 + w2)   := by rw [Nat.mul_add])))
+
+-- more concise version of the above
+theorem even_plus_even₁ (h1 : IsEven a) (h2 : IsEven b) :
+    IsEven (a + b) :=
+  match h1, h2 with
+  | ⟨w1, hw1⟩, ⟨w2, hw2⟩ =>
+    ⟨w1 + w2, by rw [hw1, hw2, Nat.mul_add]⟩
+
+open Classical
+variable (p : α → Prop)
+
+example (h : ¬ ∀ x, ¬ p x) : ∃ x, p x :=
+  byContradiction
+    (fun h1 : ¬ ∃ x, p x =>
+      have h2 : ∀ x, ¬ p x :=
+        fun x =>
+        fun h3 : p x =>
+        have h4 : ∃ x, p x := ⟨x, h3⟩
+        show False from h1 h4
+      show False from h h2)
+
+-- Exercises
+open Classical
+
+variable (α : Type) (p q : α → Prop)
+variable (r : Prop)
+
+example : (∃ _x : α, r) → r :=
+    λ he => Exists.elim he (λ _x hr => hr)
+
+
+example (a : α) : r → (∃ _x : α, r) :=
+  λ hr => Exists.intro a hr
+
+example : (∃ x, p x ∧ r) ↔ (∃ x, p x) ∧ r :=
+  Iff.intro
+    (λ he =>
+      Exists.elim he (λ hx conj => ⟨Exists.intro hx conj.left, conj.right⟩))
+    (λ conj =>
+      Exists.elim conj.left (λ hx hpx => Exists.intro hx ⟨hpx, conj.right⟩))
+
+-- The same as above, more concise
+example : (∃ x, p x ∧ r) ↔ (∃ x, p x) ∧ r :=
+  Iff.intro
+    (λ ⟨hx, ⟨hpx, hr⟩⟩ => ⟨⟨hx, hpx⟩, hr⟩)
+    (λ ⟨⟨hx, hpx⟩, hr⟩ => ⟨hx, ⟨hpx, hr⟩⟩)
+
+example : (∃ x, p x ∨ q x) ↔ (∃ x, p x) ∨ (∃ x, q x) :=
+  Iff.intro
+    (λ ⟨hx, hpoq ⟩ =>
+      Or.elim hpoq
+        (λ hpx => Or.inl ⟨hx, hpx⟩)
+        (λ hqx => Or.inr ⟨hx, hqx⟩))
+    (λ heoe =>
+      Or.elim heoe
+        (λ ⟨hx, hpx⟩ => ⟨hx, Or.inl hpx⟩)
+        (λ ⟨hx, hqx⟩ => ⟨hx, Or.inr hqx⟩))
+
+example : (∀ x, p x) ↔ ¬ (∃ x, ¬ p x) :=
+  Iff.intro
+    (λ hfxpx ⟨hx, npx⟩ => absurd (hfxpx hx) npx)
+    (λ hnegEx hx => byContradiction (λ nphx => hnegEx ⟨hx, nphx⟩ ))
+
+example : (∃ x, p x) ↔ ¬ (∀ x, ¬ p x) := sorry
+example : (¬ ∃ x, p x) ↔ (∀ x, ¬ p x) := sorry
+example : (¬ ∀ x, p x) ↔ (∃ x, ¬ p x) := sorry
+
+example : (∀ x, p x → r) ↔ (∃ x, p x) → r := sorry
+example (a : α) : (∃ x, p x → r) ↔ (∀ x, p x) → r := sorry
+example (a : α) : (∃ x, r → p x) ↔ (r → ∃ x, p x) := sorry
