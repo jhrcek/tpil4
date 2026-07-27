@@ -374,7 +374,7 @@ example : (∃ x, p x ∧ r) ↔ (∃ x, p x) ∧ r :=
 
 example : (∃ x, p x ∨ q x) ↔ (∃ x, p x) ∨ (∃ x, q x) :=
   Iff.intro
-    (λ ⟨hx, hpoq ⟩ =>
+    (λ ⟨hx, hpoq⟩ =>
       Or.elim hpoq
         (λ hpx => Or.inl ⟨hx, hpx⟩)
         (λ hqx => Or.inr ⟨hx, hqx⟩))
@@ -385,13 +385,180 @@ example : (∃ x, p x ∨ q x) ↔ (∃ x, p x) ∨ (∃ x, q x) :=
 
 example : (∀ x, p x) ↔ ¬ (∃ x, ¬ p x) :=
   Iff.intro
-    (λ hfxpx ⟨hx, npx⟩ => absurd (hfxpx hx) npx)
-    (λ hnegEx hx => byContradiction (λ nphx => hnegEx ⟨hx, nphx⟩ ))
+    (λ hfxpx ⟨hx, npx⟩ => npx (hfxpx hx))
+    (λ hnegEx hx => byContradiction (λ nphx => hnegEx ⟨hx, nphx⟩))
 
-example : (∃ x, p x) ↔ ¬ (∀ x, ¬ p x) := sorry
-example : (¬ ∃ x, p x) ↔ (∀ x, ¬ p x) := sorry
-example : (¬ ∀ x, p x) ↔ (∃ x, ¬ p x) := sorry
+example : (∃ x, p x) ↔ ¬ (∀ x, ¬ p x) :=
+  Iff.intro
+    (λ ⟨hx, hpx⟩ hfxnpx => hfxnpx hx hpx)
+    (λ hnfxnpx : ¬∀ x, ¬p x => byContradiction
+      (λ hnexpx : ¬∃ x, p x  =>
+        have hfxnpx : ∀ x, ¬p x := λ hx hnpx => hnexpx ⟨ hx, hnpx ⟩
+        hnfxnpx hfxnpx
+     ))
 
-example : (∀ x, p x → r) ↔ (∃ x, p x) → r := sorry
-example (a : α) : (∃ x, p x → r) ↔ (∀ x, p x) → r := sorry
-example (a : α) : (∃ x, r → p x) ↔ (r → ∃ x, p x) := sorry
+example : (¬ ∃ x, p x) ↔ (∀ x, ¬ p x) :=
+  Iff.intro
+    (λ (hne : ¬∃ x, p x) (hx : α) (hpx : p hx) => hne ⟨hx, hpx⟩ )
+    (λ (hfx : ∀ x, ¬p x) ⟨hx, hpx⟩ => hfx hx hpx)
+
+example : (¬ ∀ x, p x) ↔ (∃ x, ¬ p x) :=
+  Iff.intro
+    (λ nfxpx =>
+        byContradiction (λ hnexnpx : ¬∃ x, ¬p x =>
+          have h1 : ∀ x, p x := λ hx => byContradiction (λ hnpx => hnexnpx ⟨hx, hnpx⟩ )
+          nfxpx h1))
+    (λ ⟨hx, hnpx⟩ hfx => hnpx (hfx hx))
+
+
+example : (∀ x, p x → r) ↔ (∃ x, p x) → r :=
+  Iff.intro
+    (λ hfx ⟨hx, hpx⟩ => hfx hx hpx)
+    (λ hexToR hx phx => hexToR ⟨hx, phx⟩)
+
+example (a : α) : (∃ x, p x → r) ↔ (∀ x, p x) → r :=
+   Iff.intro
+      (λ ⟨hx, hf⟩ f => hf (f hx))
+      (λ f => Or.elim (em (∀ x, p x))
+        (λ g => ⟨ a, λ _ => f g  ⟩ )
+       (λ nfx =>
+          have hex : ∃ x, ¬ p x :=
+            byContradiction (λ hnexnpx : ¬∃ x, ¬p x =>
+              nfx (λ hx => byContradiction (λ hnpx => hnexnpx ⟨hx, hnpx⟩)))
+          Exists.elim hex (λ hx hnpx => ⟨hx, λ hpx => absurd hpx hnpx⟩))
+        )
+
+example (a : α) : (∃ x, p x → r) ↔ (∀ x, p x) → r :=
+  Iff.intro
+    (λ ⟨hx, hf⟩ f => hf (f hx))
+    (λ f =>
+      byContradiction (λ hnex : ¬∃ x, p x → r =>
+        have h1 : ∀ x, p x := λ x =>
+          Or.elim (em (p x))
+            id
+            (λ hnpx => False.elim (hnex ⟨x, λ hpx => absurd hpx hnpx⟩))
+        hnex ⟨a, λ _ => f h1⟩))
+
+
+example (a : α) : (∃ x, r → p x) ↔ (r → ∃ x, p x) :=
+  Iff.intro
+    (λ ⟨hx, hf⟩ hr => ⟨hx, hf hr⟩ )
+    (fun f =>
+      Or.elim (em r)
+      (λ hr : r =>
+        match f hr with
+         | ⟨x, hpx⟩ => ⟨x, λ _ => hpx⟩)
+      (λ hnr : ¬r => ⟨a, λ hr => False.elim (hnr hr)⟩)
+    )
+
+-- 4.5. More on the Proof Language
+variable (f : Nat → Nat)
+variable (h : ∀ x : Nat, f x ≤ f (x + 1))
+
+example : f 0 ≤ f 3 :=
+  have : f 0 ≤ f 1 := h 0
+  have : f 0 ≤ f 2 := Nat.le_trans this (h 1)
+  show f 0 ≤ f 3 from Nat.le_trans this (h 2)
+
+example : f 0 ≤ f 3 :=
+  have : f 0 ≤ f 1 := h 0
+  have : f 0 ≤ f 2 := Nat.le_trans (by assumption) (h 1)
+  show f 0 ≤ f 3 from Nat.le_trans (by assumption) (h 2)
+
+example : f 0 ≥ f 1 → f 1 ≥ f 2 → f 0 = f 2 :=
+  fun _ : f 0 ≥ f 1 =>
+  fun _ : f 1 ≥ f 2 =>
+  have : f 0 ≥ f 2 := Nat.le_trans ‹f 1 ≥ f 2› ‹f 0 ≥ f 1›
+  have : f 0 ≤ f 2 := Nat.le_trans (h 0) (h 1)
+  show f 0 = f 2 from Nat.le_antisymm this ‹f 0 ≥ f 2›
+
+-- 4.6. Exercises
+
+-- 1
+variable (α : Type) (p q : α → Prop)
+
+example : (∀ x, p x ∧ q x) ↔ (∀ x, p x) ∧ (∀ x, q x) :=
+  Iff.intro
+    (λ hfa => And.intro (λ hx => (hfa hx).left) (λ hx => (hfa hx).right))
+    (λ ⟨hfp, hfq⟩ hx => ⟨hfp hx, hfq hx⟩)
+
+example : (∀ x, p x → q x) → (∀ x, p x) → (∀ x, q x) :=
+    λ hfpq hfp hx => (hfpq hx) (hfp hx)
+
+example : (∀ x, p x) ∨ (∀ x, q x) → ∀ x, p x ∨ q x :=
+  λ hpq hx =>
+    Or.elim hpq
+      (λ hfp => Or.inl (hfp hx))
+      (λ hfq => Or.inr (hfq hx))
+
+-- 2
+variable (α : Type) (p q : α → Prop)
+variable (r : Prop)
+
+example : α → ((∀ x : α, r) ↔ r) :=
+  λ ha : α => Iff.intro
+    (λ (hfr : ∀ x, r) => hfr ha)
+    (λ hr : r => λ _ => hr)
+
+example : (∀ x, p x ∨ r) ↔ (∀ x, p x) ∨ r :=
+  Iff.intro
+    (λ hfpr => Or.elim (em r)
+      (λ hr => Or.inr hr)
+      (λ hnr : ¬r => Or.inl (λ hx => Or.elim (hfpr hx)
+        (λ hpx => hpx)
+        (λ hr => False.elim (hnr hr)))))
+    (λ hor hx => Or.elim hor
+      (λ hfx => Or.inl (hfx hx))
+      (λ hr => Or.inr hr))
+
+example : (∀ x, r → p x) ↔ (r → ∀ x, p x) :=
+  Iff.intro
+    (λ hf hr hx => hf hx hr)
+    (λ hf hx hr => hf hr hx)
+
+-- 3
+variable (men : Type) (barber : men)
+variable (shaves : men → men → Prop)
+
+example (h : ∀ x : men, shaves barber x ↔ ¬ shaves x x) : False :=
+  have h₁ : shaves barber barber ↔ ¬ shaves barber barber := h barber
+  Or.elim (em (shaves barber barber))
+    (λ hp => (h₁.mp hp) hp)
+    (λ hnp => hnp (h₁.mpr hnp))
+
+example (h : ∀ x : men, shaves barber x ↔ ¬ shaves x x) : False :=
+  have h₁ : shaves barber barber ↔ ¬ shaves barber barber := h barber
+  have hn : ¬ shaves barber barber := fun hp => h₁.mp hp hp
+  hn (h₁.mpr hn)
+
+-- 4
+variable (n m : Nat)
+
+def even (n : Nat) : Prop :=
+  ∃ m : Nat, n = 2 * m
+
+def prime (n : Nat) : Prop :=
+  n ≥ 2 ∧ ∀ m : Nat, m | n → m = 1 ∨ m = n
+
+def infinitely_many_primes : Prop :=
+  -- my first attempt:
+  --∀ n : Nat, (prime n → ∃ m : Nat, n < m ∧ prime m)
+  -- Claude:
+  ∀ n : Nat , ∃ p, p > n ∧ prime p
+
+def Fermat_prime (n : Nat) : Prop :=
+  prime n ∧ ∃ k : Nat, n = 2^(2^k) + 1
+
+def infinitely_many_Fermat_primes : Prop :=
+  ∀ n : Nat, ∃ p, p > n ∧ Fermat_prime p
+
+def goldbach_conjecture : Prop :=
+  ∀ n : Nat, 2 < n ∧ even n → ∃ p q : Nat, n = p + q ∧ prime p ∧ prime q
+
+-- is the proposition that every odd number greater than 5 can be expressed as
+-- the sum of three (not necessarily distinct) primes.
+def Goldbach's_weak_conjecture : Prop :=
+  ∀ n : Nat, 5 < n ∧ ¬even n → ∃ p q r : Nat, prime p ∧ prime q ∧ prime r ∧ n = p + q + r
+
+def Fermat's_last_theorem : Prop :=
+  ¬ ∃ a b c n : Nat, n > 2 ∧ a > 0 ∧ b > 0 ∧ c > 0 ∧ a^n + b^n = c^n
